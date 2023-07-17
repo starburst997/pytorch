@@ -316,6 +316,9 @@ class IRNode:
         """
         raise NotImplementedError(f"realize NYI on {type(self)}")
 
+    def get_layout(self):
+        raise NotImplementedError(f"get_layout() is not implemented by {type(self)}!")
+
 
 @dataclasses.dataclass
 class Loops(IRNode):
@@ -1162,6 +1165,11 @@ class BaseView(IRNode):
     def get_dtype(self):
         return self.data.get_dtype()
 
+
+    def get_layout(self):
+        return self.data.get_layout()
+
+
     def get_device(self):
         return self.data.get_device()
 
@@ -1563,6 +1571,9 @@ class ReinterpretView(BaseView):
 
     def get_dtype(self):
         return self.layout.dtype
+
+    def get_layout(self):
+        return self.layout
 
     def get_size(self):
         return list(self.layout.size)
@@ -2419,11 +2430,13 @@ class TemplateBuffer(Buffer):
     that we can fuse an epilogue onto.
     """
 
-    def __init__(self, layout, inputs, make_kernel_render):
+    def __init__(self, layout, inputs, make_kernel_render, workspace_size: int = 0):
         super().__init__(name=None, layout=layout)
         self.inputs = InputsKernel.unwrap_storage(inputs)
         self.make_kernel_render = make_kernel_render
         self.name = V.graph.register_buffer(self)
+        # Global memory (in bytes) needed for this template.
+        self.workspace_size = workspace_size
 
     def get_read_writes(self):
         return self.normalized_read_writes()
@@ -4293,6 +4306,9 @@ class MutableBox(IRNode):
     @property
     def layout(self):
         return self.data.layout
+
+    def get_layout(self):
+        return self.layout
 
     def __str__(self):
         if isinstance(self.data, MutableBox):
