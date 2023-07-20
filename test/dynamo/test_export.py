@@ -2791,8 +2791,8 @@ def forward(self, x):
 
         example_inputs = (torch.rand(5),)
         with self.assertRaisesRegex(
-            torch._dynamo.exc.UserError,
-            "Expected 4 arguments",
+            torch._dynamo.exc.ArgsMismatchError,
+            "missing a required argument\: \'args\'",
         ):
             torch._dynamo.export(f, *example_inputs, aten_graph=True)
 
@@ -3237,6 +3237,7 @@ def forward(self, x):
     def test_cond_free_variables_overlapping(self):
         from functorch.experimental.control_flow import cond
 
+
         class Module(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -3246,13 +3247,11 @@ def forward(self, x):
                 b = torch.ones(6, 4)
                 c = torch.ones(6, 4)
                 d = torch.ones(6, 4)
-
                 def true_fn(x):
                     return x + x + a.cos() + b.cos() + d.cos()
 
                 def false_fn(x):
                     return x * x + a.sin() + b.sin() + c.sin()
-
                 return cond(pred, true_fn, false_fn, [x])
 
         mod = Module()

@@ -267,6 +267,41 @@ class TorchHigherOrderOperatorVariable(VariableTracker):
         unimplemented(f"HigherOrderOperator {self.value.__name__}")
 
 
+# We rely on the "example_value" of lifted_proxies to
+# get the source of the corresponding TensorVariable so
+# as to associate it with the python-level variables.
+# TODO: maybe it's better to get a reverse mapping between
+# proxy to VariableTracker.
+def lifted_proxies_to_python_variables(tx, lifted_proxies):
+    scope = {"L": tx.output.local_scope, "G": tx.output.global_scope}
+
+    def proxy_to_python_var(proxy):
+        maybe_fake = proxy.node.meta.get("example_value", None)
+        if maybe_fake is None:
+            return maybe_fake
+        maybe_source = next(
+            (x.source for x in tx.output.tracked_fakes if x.fake is maybe_fake), None
+        )
+        if not maybe_source:
+            maybe_param_buffer = proxy.node.target
+            maybe_source = tx.output.param_name_to_source.get(maybe_param_buffer, None)
+        assert (
+            maybe_source
+        ), f"Couldn't find source for proxy {proxy}"
+        return eval(maybe_source.name(), {}, scope)
+
+    return pytree.tree_map(proxy_to_python_var, list(lifted_proxies.keys()))
+
+
+def tracker_to_python_varaibles(tx, variable_trackers):
+    scope = {"L": tx.output.local_scope, "G": tx.output.global_scope}
+
+    def eval_tracker(variable_tracker):
+        return eval(variable_tracker.source.name(), {}, scope)
+
+    return pytree.tree_map(eval_tracker, variable_trackers)
+
+
 class CondHigherOrderVariable(TorchHigherOrderOperatorVariable):
     def call_function(
         self, tx, args: "List[VariableTracker]", kwargs: "Dict[str, VariableTracker]"
@@ -375,6 +410,9 @@ class CondHigherOrderVariable(TorchHigherOrderOperatorVariable):
         (false_r, false_graph, false_lifted_freevars) = speculate_branch(False)
         false_nn_modules = tx.copy_graphstate().output.nn_modules
 
+        true_vars = lifted_proxies_to_python_variables(tx, true_lifted_freevars)
+        false_vars = lifted_proxies_to_python_variables(tx, false_lifted_freevars)
+
         # TODO (tmanlaibaatar) deduplicate this later
         # Let's say we capture cond(pred, true_fn, false_fn, x)
         # and true_fn has lifted variables a, b, c
@@ -436,15 +474,17 @@ class CondHigherOrderVariable(TorchHigherOrderOperatorVariable):
 
         _, p_kwargs = proxy_args_kwargs([], kwargs)
 
+        output_proxy = tx.output.create_proxy(
+            "call_function",
+            self.value,
+            args=tuple(p_args),
+            kwargs=p_kwargs,
+        )
+        output_proxy.node.meta["lifted_args"] = true_vars + false_vars
         # Store the invocation as a call
         return wrap_fx_proxy(
             tx=tx,
-            proxy=tx.output.create_proxy(
-                "call_function",
-                self.value,
-                args=tuple(p_args),
-                kwargs=p_kwargs,
-            ),
+            proxy=output_proxy,
             example_value=example_value,
         )
 

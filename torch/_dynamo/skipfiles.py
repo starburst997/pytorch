@@ -30,6 +30,8 @@ import typing
 import unittest
 import weakref
 
+import functorch
+
 import torch
 import torch._inductor.test_operators
 import torch.distributed
@@ -153,6 +155,7 @@ FILENAME_ALLOWLIST |= set(
 # torch.func.grad: need to allow this file to be able to look at `grad_impl`
 FILENAME_ALLOWLIST |= {
     _module_dir(torch) + "_functorch/apis.py",
+    _module_dir(functorch) + "experimental/_cond.py",
 }
 
 SKIP_DIRS_RE = None

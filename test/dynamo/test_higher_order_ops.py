@@ -136,6 +136,19 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
         # be the input.
         self._test_wrap_simple(fn, (x,), 2)
 
+    def test_capture_within_function(self):
+        freevar = torch.randn(3)
+        def fn(x):
+            def test(x):
+                return freevar
+            return wrap(test, x)
+
+        def test_fn(x):
+            return wrap(fn, x)
+
+        x = torch.randn(3)
+        self._test_wrap_simple(test_fn, (x, ), 2)
+
     def test_return_captured_vars(self):
         freevar1 = torch.randn(3)
         freevar2 = torch.randn(3)
@@ -980,12 +993,16 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
         mod_for_compile = torch.compile(Foo(), backend=cnt, dynamic=True)
         mod_for_eager = Foo()
 
+        ref = torch.tensor(72.)
         actual = mod_for_compile(torch.ones(6, 4))
-        ref = mod_for_eager(torch.ones(6, 4))
-        self.assertEqual(actual, ref)
+        with self.assertRaisesRegex(
+            torch._dynamo.exc.UserError,
+            "Can't inplace modify module params/buffers inside HigherOrderOp"
+        ):
+            mod_for_eager(torch.ones(6, 4))
 
         actual = mod_for_compile(torch.ones(3, 4))
-        ref = mod_for_eager(torch.ones(3, 4))
+        ref = torch.tensor(0.)
         self.assertEqual(actual, ref)
 
         self.assertExpectedInline(
@@ -1073,12 +1090,18 @@ def forward(self, s0 : torch.SymInt, s1 : torch.SymInt, L_x_ : torch.Tensor):
             Foo(), backend=cnt, dynamic=True, fullgraph=False
         )
         mod_for_eager = Foo()
+        with self.assertRaisesRegex(
+            torch._dynamo.exc.UserError,
+            "HigherOrderOperator\: Mutating a variable not in the current scope \(replace_all\)"
+        ):
+            mod_for_eager(torch.tensor(True), torch.tensor(5))
 
+        ref = torch.tensor(10)
         res = mod_for_compile(torch.tensor(True), torch.tensor(5))
         res = mod_for_compile(torch.tensor(True), torch.tensor(5))
 
         self.assertEqual(len(backend.graphs), 0)
-        self.assertEqual(res, mod_for_eager(torch.tensor(True), torch.tensor(5)))
+        self.assertEqual(res, ref)
 
     def test_cond_with_constant_pred(self):
         def test(pred, x):

@@ -28,6 +28,8 @@ from torch._subclasses import fake_tensor
 from torch.fx.experimental.proxy_tensor import make_fx
 from torch.fx.graph import _PyTreeCodeGen, _PyTreeInfo
 from torch.nn.parallel.distributed import DistributedDataParallel
+from torch.utils._python_dispatch import _get_current_dispatch_mode_stack
+from torch.fx.experimental.proxy_tensor import ProxyTorchDispatchMode
 from ..fx import GraphModule
 from .backends.registry import CompilerFn, lookup_backend
 
@@ -288,17 +290,22 @@ class _TorchDynamoContext:
 
         @functools.wraps(fn)
         def _fn(*args, **kwargs):
+
+            def under_tracing_mode():
+                py_dispatch_modes = _get_current_dispatch_mode_stack()
+                return any((mode.is_tracing for mode in py_dispatch_modes if isinstance(mode, ProxyTorchDispatchMode)))
+
             if (
-                not isinstance(self, DisableContext)
-                and torch.fx._symbolic_trace.is_fx_tracing()
+               not isinstance(self, DisableContext)
+               and under_tracing_mode()
             ):
-                if config.error_on_nested_fx_trace:
-                    raise RuntimeError(
-                        "Detected that you are using FX to symbolically trace "
-                        "a dynamo-optimized function. This is not supported at the moment."
-                    )
-                else:
-                    return fn(*args, **kwargs)
+               if config.error_on_nested_fx_trace:
+                   raise RuntimeError(
+                       "Detected that you are using FX to symbolically trace "
+                       "a dynamo-optimized function. This is not supported at the moment."
+                   )
+               else:
+                   return fn(*args, **kwargs)
 
             on_enter()
             prior = set_eval_frame(callback)

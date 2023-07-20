@@ -27,6 +27,57 @@ from torch._dynamo.exc import CondOpArgsMismatchError
 class UnsupportedAliasMutationException(RuntimeError):
     reason: str
 
+def dynamo_inspect(op, *args):
+    exclude_keys = DispatchKeySet(DispatchKey.FuncTorchDynamicLayerFrontMode) \
+        .add(DispatchKey.FuncTorchDynamicLayerBackMode) \
+        .add(DispatchKey.Functionalize)
+    with _ExcludeDispatchKeyGuard(exclude_keys):
+        with torch.utils._python_dispatch._disable_current_modes():
+            def from_fun(t):
+                if isinstance(t, torch.Tensor):
+                    def to_hint(sym_int) -> int:
+                        if isinstance(sym_int, torch.SymInt):
+                            return sym_int.node._hint
+                        return sym_int
+                    size = pytree.tree_map(to_hint, t.size())
+                    stride = pytree.tree_map(to_hint, t.stride())
+                    return torch.empty_strided(size, stride, requires_grad=t.requires_grad)
+                elif isinstance(t, torch.SymBool):
+                    return t.node._hint
+                return t
+
+            new_args = pytree.tree_map(from_fun, args)
+
+            class EagerAndRecordGraphs:
+                def __init__(self):
+                    self.graphs = []
+
+                def __call__(self, gm: torch.fx.GraphModule, example_inputs):
+                    self.graphs.append(gm)
+                    return gm
+            eager_record_graph_backend = EagerAndRecordGraphs()
+            # Resetting the state of dynamo to ensure that the current operation is isolated
+            # and remains unaffected by any previous or subsequent Dynamo calls.
+            # Note that this also invalidates the cache for compiled cond.
+            # TODO: find a way to avoid reset.
+            torch._dynamo.reset()
+            torch.compile(cond, fullgraph=True, backend=eager_record_graph_backend)(*new_args)
+            torch._dynamo.reset()
+            captured_graph = eager_record_graph_backend.graphs[0]
+    return captured_graph
+
+
+def cond_compiled(pred, true_fn, false_fn, args):
+    if torch._dynamo.is_compiling():
+        return cond(pred, true_fn, false_fn, args)
+    else:
+        captured_graph = dynamo_inspect(cond, pred, true_fn, false_fn, args)
+        cond_node = next((node for node in captured_graph.graph.nodes if node.op == "call_function"), None)
+        assert cond_node
+        true_gm = getattr(captured_graph, cond_node.args[1].target)
+        false_gm = getattr(captured_graph, cond_node.args[2].target)
+        lifted_args = cond_node.meta["lifted_args"]
+        return cond(pred, true_gm, false_gm, (*args, *lifted_args))
 
 """
 We're going to define a `cond` operation.
