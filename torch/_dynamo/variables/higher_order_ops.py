@@ -285,9 +285,7 @@ def lifted_proxies_to_python_variables(tx, lifted_proxies):
         if not maybe_source:
             maybe_param_buffer = proxy.node.target
             maybe_source = tx.output.param_name_to_source.get(maybe_param_buffer, None)
-        assert (
-            maybe_source
-        ), f"Couldn't find source for proxy {proxy}"
+        assert maybe_source, f"Couldn't find source for proxy {proxy}"
         return eval(maybe_source.name(), {}, scope)
 
     return pytree.tree_map(proxy_to_python_var, list(lifted_proxies.keys()))

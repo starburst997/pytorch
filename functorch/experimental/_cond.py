@@ -44,6 +44,8 @@ def dynamo_inspect(op, *args):
                     return torch.empty_strided(size, stride, requires_grad=t.requires_grad)
                 elif isinstance(t, torch.SymBool):
                     return t.node._hint
+                elif isinstance(t, torch.fx.proxy.Proxy):
+                    raise RuntimeError(f"Unable to symbolically trace HigherOrderOperators {op}")
                 return t
 
             new_args = pytree.tree_map(from_fun, args)
