@@ -408,6 +408,7 @@ class CondHigherOrderVariable(TorchHigherOrderOperatorVariable):
         (false_r, false_graph, false_lifted_freevars) = speculate_branch(False)
         false_nn_modules = tx.copy_graphstate().output.nn_modules
 
+        breakpoint()
         true_vars = lifted_proxies_to_python_variables(tx, true_lifted_freevars)
         false_vars = lifted_proxies_to_python_variables(tx, false_lifted_freevars)
 

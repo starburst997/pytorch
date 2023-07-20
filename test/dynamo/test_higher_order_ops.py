@@ -121,6 +121,9 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
         x = torch.randn(3)
         self._test_wrap_simple(f, (x,), 2)
 
+    def _test_wrap(f, args):
+        return f(args)
+
     def test_return_captured_var(self):
         freevar = torch.randn(3)
 
@@ -128,7 +131,7 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
             return freevar
 
         def fn(x):
-            return wrap(test, x)
+            return _test_wrap(test, x)
 
         x = torch.randn(3)
 
