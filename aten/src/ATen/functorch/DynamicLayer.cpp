@@ -106,13 +106,13 @@ class FuncTorchTLS : public FuncTorchTLSBase {
   }
 
   void checkSupportsInplaceRequiresGrad() const override {
-    TORCH_CHECK(dynamicLayerStack.empty() || allow_inplace_requires_grad_,
-        "You are attempting to call Tensor.requires_grad_() (or perhaps using ",
-        "torch.autograd.functional.* APIs) inside of a function being transformed ",
-        "by a functorch transform. ",
-        "This is unsupported, please attempt to use the functorch transforms ",
-        "(e.g. grad, vjp, jacrev, jacfwd, hessian) or call requires_grad_() "
-        "outside of a function being transformed instead.");
+    // TORCH_CHECK(dynamicLayerStack.empty() || allow_inplace_requires_grad_,
+    //     "You are attempting to call Tensor.requires_grad_() (or perhaps using ",
+    //     "torch.autograd.functional.* APIs) inside of a function being transformed ",
+    //     "by a functorch transform. ",
+    //     "This is unsupported, please attempt to use the functorch transforms ",
+    //     "(e.g. grad, vjp, jacrev, jacfwd, hessian) or call requires_grad_() "
+    //     "outside of a function being transformed instead.");
   }
   void checkSupportsRetainGrad() const override {
     TORCH_CHECK(dynamicLayerStack.empty(),

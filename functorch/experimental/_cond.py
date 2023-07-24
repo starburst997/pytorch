@@ -50,23 +50,14 @@ def dynamo_inspect(op, *args):
 
             new_args = pytree.tree_map(from_fun, args)
 
-            class EagerAndRecordGraphs:
-                def __init__(self):
-                    self.graphs = []
-
-                def __call__(self, gm: torch.fx.GraphModule, example_inputs):
-                    self.graphs.append(gm)
-                    return gm
-            eager_record_graph_backend = EagerAndRecordGraphs()
             # Resetting the state of dynamo to ensure that the current operation is isolated
             # and remains unaffected by any previous or subsequent Dynamo calls.
             # Note that this also invalidates the cache for compiled cond.
             # TODO: find a way to avoid reset.
-            torch._dynamo.reset()
-            torch.compile(cond, fullgraph=True, backend=eager_record_graph_backend)(*new_args)
-            torch._dynamo.reset()
-            captured_graph = eager_record_graph_backend.graphs[0]
-    return captured_graph
+            def wrapper(*args, **kwargs):
+                return cond(*args, **kwargs)
+            gm, gurads = torch._dynamo.export(wrapper, *new_args)
+    return gm
 
 
 def cond_compiled(pred, true_fn, false_fn, args):
@@ -74,12 +65,7 @@ def cond_compiled(pred, true_fn, false_fn, args):
         return cond(pred, true_fn, false_fn, args)
     else:
         captured_graph = dynamo_inspect(cond, pred, true_fn, false_fn, args)
-        cond_node = next((node for node in captured_graph.graph.nodes if node.op == "call_function"), None)
-        assert cond_node
-        true_gm = getattr(captured_graph, cond_node.args[1].target)
-        false_gm = getattr(captured_graph, cond_node.args[2].target)
-        lifted_args = cond_node.meta["lifted_args"]
-        return cond(pred, true_gm, false_gm, (*args, *lifted_args))
+        return captured_graph(pred, true_fn, false_fn, args)
 
 """
 We're going to define a `cond` operation.

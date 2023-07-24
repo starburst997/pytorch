@@ -408,9 +408,8 @@ class CondHigherOrderVariable(TorchHigherOrderOperatorVariable):
         (false_r, false_graph, false_lifted_freevars) = speculate_branch(False)
         false_nn_modules = tx.copy_graphstate().output.nn_modules
 
-        breakpoint()
-        true_vars = lifted_proxies_to_python_variables(tx, true_lifted_freevars)
-        false_vars = lifted_proxies_to_python_variables(tx, false_lifted_freevars)
+        #true_vars = lifted_proxies_to_python_variables(tx, true_lifted_freevars)
+        #false_vars = lifted_proxies_to_python_variables(tx, false_lifted_freevars)
 
         # TODO (tmanlaibaatar) deduplicate this later
         # Let's say we capture cond(pred, true_fn, false_fn, x)
@@ -479,7 +478,7 @@ class CondHigherOrderVariable(TorchHigherOrderOperatorVariable):
             args=tuple(p_args),
             kwargs=p_kwargs,
         )
-        output_proxy.node.meta["lifted_args"] = true_vars + false_vars
+        # output_proxy.node.meta["lifted_args"] = true_vars + false_vars
         # Store the invocation as a call
         return wrap_fx_proxy(
             tx=tx,

@@ -262,6 +262,7 @@ class TestControlFlowTraced(TestCase):
             return cond(pred, true_fn, false_fn, [x])
 
         example_inputs = (torch.ones(4, 5),)
+        print(example_inputs)
         functional_f = torch.func.functionalize(f)
         self.assertEqual(functional_f(*example_inputs), f(*example_inputs))
 
