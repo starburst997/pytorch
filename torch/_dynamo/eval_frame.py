@@ -837,6 +837,7 @@ def export(
     constraints: Optional[List[Constraint]] = None,
     assume_static_by_default: bool = False,
     fake_mode: fake_tensor.FakeTensorMode = None,
+    rewrite_sig = True,
     **kwargs,
 ) -> Tuple[torch.fx.GraphModule, Set[_guards.Guard]]:
     """
@@ -950,6 +951,7 @@ def export(
         ), "Tried to emit a second graph during export. Tracing through 'f' must produce a single graph."
         graph = gm
 
+
         nonlocal fake_mode, example_inputs
         fake_mode = fake_mode or _guards.detect_fake_mode(inner_example_inputs)
         example_inputs = inner_example_inputs
@@ -1038,8 +1040,8 @@ def export(
     assert out_guards is not None, "Failed to produce guards during tracing"
     assert fake_mode is not None
 
-    breakpoint()
-    matched_input_elements_positions = produce_matching(flat_args, graph_captured_input)
+    if rewrite_sig:
+        matched_input_elements_positions = produce_matching(flat_args, graph_captured_input)
 
     # NB: This is mostly hitting the cache; Dynamo already converted these
     example_fake_inputs = [fake_mode.from_tensor(t) for t in example_inputs]
@@ -1047,7 +1049,8 @@ def export(
 
     assert graph_captured_result is not None
     flat_both = list(graph_captured_result) + flat_args
-    matched_output_elements_positions = produce_matching(flat_both, flat_results_traced)
+    if rewrite_sig:
+        matched_output_elements_positions = produce_matching(flat_both, flat_results_traced)
 
     if aten_graph:
         # Running graph with interpreter is needed for propagating the stack_trace
@@ -1069,14 +1072,17 @@ def export(
                 # Wrap the internal error to the user-facing error
                 raise UserError(UserErrorType.DYNAMIC_CONTROL_FLOW, str(e))
 
-    new_graph = FlattenInputOutputSignature(
-        graph,
-        flat_args,
-        matched_input_elements_positions,
-        matched_output_elements_positions,
-        example_fake_inputs,
-        fake_mode,
-    ).transform()
+    if rewrite_sig:
+        new_graph = FlattenInputOutputSignature(
+            graph,
+            flat_args,
+            matched_input_elements_positions,
+            matched_output_elements_positions,
+            example_fake_inputs,
+            fake_mode,
+        ).transform()
+    else:
+        new_graph = graph
 
     # Store constraints and inputs as metadata for user passes, e.g. turn constraints to runtime check
     new_graph.meta["input_shape_constraints"] = (
@@ -1164,17 +1170,18 @@ def export(
 
         return input_strs
 
-    new_graph.graph._codegen = _PyTreeCodeGen(
-        _PyTreeInfo(
-            argument_names(f, *args, **kwargs),
-            in_spec,
-            out_spec_traced,
+    if rewrite_sig:
+        new_graph.graph._codegen = _PyTreeCodeGen(
+            _PyTreeInfo(
+                argument_names(f, *args, **kwargs),
+                in_spec,
+                out_spec_traced,
+            )
         )
-    )
 
     new_graph.recompile()
-    return (new_graph, out_guards)
-
+    ret = (new_graph, out_guards) if rewrite_sig else (new_graph, out_guards, example_inputs)
+    return ret
 
 def optimize_assert(
     backend,

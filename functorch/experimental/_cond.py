@@ -27,7 +27,7 @@ from torch._dynamo.exc import CondOpArgsMismatchError
 class UnsupportedAliasMutationException(RuntimeError):
     reason: str
 
-def dynamo_inspect(op, *args):
+def exported_cond(op, *args):
     exclude_keys = DispatchKeySet(DispatchKey.FuncTorchDynamicLayerFrontMode) \
         .add(DispatchKey.FuncTorchDynamicLayerBackMode) \
         .add(DispatchKey.Functionalize)
@@ -42,6 +42,7 @@ def dynamo_inspect(op, *args):
                     size = pytree.tree_map(to_hint, t.size())
                     stride = pytree.tree_map(to_hint, t.stride())
                     return torch.empty_strided(size, stride, requires_grad=t.requires_grad)
+                # Need to specialize symbool for now. Won't affect traced graph.
                 elif isinstance(t, torch.SymBool):
                     return t.node._hint
                 elif isinstance(t, torch.fx.proxy.Proxy):
@@ -50,22 +51,41 @@ def dynamo_inspect(op, *args):
 
             new_args = pytree.tree_map(from_fun, args)
 
-            # Resetting the state of dynamo to ensure that the current operation is isolated
-            # and remains unaffected by any previous or subsequent Dynamo calls.
-            # Note that this also invalidates the cache for compiled cond.
-            # TODO: find a way to avoid reset.
-            def wrapper(*args, **kwargs):
-                return cond(*args, **kwargs)
-            gm, gurads = torch._dynamo.export(wrapper, *new_args)
-    return gm
+            # we need to wrap true_fn/false_fn up otherwise the local scope
+            # will contain the original true_fn and false_fn's signature
+            def wrapper(new_args):
+                return cond(*new_args)
+
+            # need to do it together otherwise will need to merge input ->
+            # duplicated effort with what we have already
+            gm, guards, example_inputs = torch._dynamo.export(wrapper, new_args, rewrite_sig=False)
+            example_inputs_ids = [id(inp) for inp in example_inputs]
+            id_to_name = {id(guard.obj_weakref()): guard.name for guard in guards if guard.obj_weakref is not None and id(guard.obj_weakref()) in example_inputs_ids}
+            example_names = [id_to_name[id(inp)] for inp in example_inputs]
+
+    # fake the new_args with original args
+    local_scope = {"L":{**locals(), "new_args":args}, "G":globals()}
+    pos_args = [eval(name, {}, local_scope) for name in example_names]
+
+    # We need to extract true_gm and false_gm from export
+    # as export won't add sym bool
+    def bind_branch_and_args(gm, pos_args):
+        ph2orig = {ph:orig for ph, orig in zip((ph for ph in gm.graph.nodes if ph.op == "placeholder"), pos_args)}
+        cond_node = next((n for n in gm.graph.nodes if n.target is cond), None)
+        assert cond_node
+        true_gm = getattr(gm, cond_node.args[1].name)
+        false_gm = getattr(gm, cond_node.args[2].name)
+        return true_gm, false_gm, tuple(ph2orig[ph] for ph in cond_node.args[3])
+
+    return cond(args[0], *bind_branch_and_args(gm, pos_args))
 
 
 def cond_compiled(pred, true_fn, false_fn, args):
+    # return cond(pred, true_fn, false_fn, args)
     if torch._dynamo.is_compiling():
         return cond(pred, true_fn, false_fn, args)
     else:
-        captured_graph = dynamo_inspect(cond, pred, true_fn, false_fn, args)
-        return captured_graph(pred, true_fn, false_fn, args)
+        return exported_cond(cond, pred, true_fn, false_fn, args)
 
 """
 We're going to define a `cond` operation.

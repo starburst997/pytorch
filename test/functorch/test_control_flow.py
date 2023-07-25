@@ -1205,7 +1205,8 @@ class TestControlFlowTraced(TestCase):
 
         gm = make_fx(foo, tracing_mode="symbolic")(torch.ones(3, 2, 1))
         x = torch.ones(4, 3, 2)
-        self.assertEqual(foo(x), gm(x))
+        self.assertEqual(gm(x), true_fn(x))
+        self.assertEqual(foo(x), true_fn(x))
 
     def _check_closure_correcly_lifted(self, f, *, args, exp_res, exp_arg_num):
         assert isinstance(args, (tuple, list))
