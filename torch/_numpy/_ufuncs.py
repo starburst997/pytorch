@@ -256,4 +256,4 @@ for name in _unary:
     vars()[name] = deco_unary_ufunc(ufunc)
 
 
-__all__ = _binary + _unary
+__all__ = _binary + _unary  # noqa: PLE0605
