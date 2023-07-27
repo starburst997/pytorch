@@ -75,7 +75,15 @@ def exported_cond(op, *args):
         assert cond_node
         true_gm = getattr(gm, cond_node.args[1].name)
         false_gm = getattr(gm, cond_node.args[2].name)
-        return true_gm, false_gm, tuple(ph2orig[ph] for ph in cond_node.args[3])
+        pos_args = []
+        for arg_node in cond_node.args[3]:
+            if arg_node.op == "placeholder" and arg_node in ph2orig:
+                pos_args.append(ph2orig[arg_node])
+            elif arg_node.op == "get_attr":
+                pos_args.append(getattr(gm, arg_node.target))
+            else:
+                raise RuntimeError(f"Cannot bind to original argumentes for {arg_node}")
+        return true_gm, false_gm, tuple(pos_args)
 
     return cond(args[0], *bind_branch_and_args(gm, pos_args))
 
