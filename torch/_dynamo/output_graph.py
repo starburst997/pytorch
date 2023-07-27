@@ -1309,7 +1309,6 @@ class SubgraphTracer(fx.Tracer):
             return self.lifted_freevars[proxy]
         new_proxy = self.create_graph_input(proxy.node.name)
         new_proxy.node.meta["example_value"] = proxy.node.meta["example_value"]
-        new_proxy.node.meta["tensor_variable"] = proxy.node.meta["tensor_variable"]
         self.lifted_freevars[proxy] = new_proxy
         if self.parent is not None and proxy.tracer != self.parent:
             self.parent.lift_tracked_freevar_to_input(proxy)

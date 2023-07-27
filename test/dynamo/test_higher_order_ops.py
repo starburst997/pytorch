@@ -121,9 +121,6 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
         x = torch.randn(3)
         self._test_wrap_simple(f, (x,), 2)
 
-    def _test_wrap(f, args):
-        return f(args)
-
     def test_return_captured_var(self):
         freevar = torch.randn(3)
 
@@ -131,26 +128,13 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
             return freevar
 
         def fn(x):
-            return _test_wrap(test, x)
+            return wrap(test, x)
 
         x = torch.randn(3)
 
         # Since, `x` is unused, we don't lift it to
         # be the input.
         self._test_wrap_simple(fn, (x,), 2)
-
-    def test_capture_within_function(self):
-        freevar = torch.randn(3)
-        def fn(x):
-            def test(x):
-                return freevar
-            return wrap(test, x)
-
-        def test_fn(x):
-            return wrap(fn, x)
-
-        x = torch.randn(3)
-        self._test_wrap_simple(test_fn, (x, ), 2)
 
     def test_return_captured_vars(self):
         freevar1 = torch.randn(3)
@@ -996,16 +980,15 @@ class HigherOrderOpTests(torch._dynamo.test_case.TestCase):
         mod_for_compile = torch.compile(Foo(), backend=cnt, dynamic=True)
         mod_for_eager = Foo()
 
-        ref = torch.tensor(72.)
+        ref = torch.tensor(72.0)
         actual = mod_for_compile(torch.ones(6, 4))
         with self.assertRaisesRegex(
-            torch._dynamo.exc.UserError,
-            "Can't inplace modify module params/buffers inside HigherOrderOp"
+            AssertionError, "Mutating module attribute buffer during export"
         ):
             mod_for_eager(torch.ones(6, 4))
 
         actual = mod_for_compile(torch.ones(3, 4))
-        ref = torch.tensor(0.)
+        ref = torch.tensor(0.0)
         self.assertEqual(actual, ref)
 
         self.assertExpectedInline(
@@ -1095,7 +1078,7 @@ def forward(self, s0 : torch.SymInt, s1 : torch.SymInt, L_x_ : torch.Tensor):
         mod_for_eager = Foo()
         with self.assertRaisesRegex(
             torch._dynamo.exc.UserError,
-            "HigherOrderOperator\: Mutating a variable not in the current scope \(replace_all\)"
+            r"Mutating a variable not in the current scope",
         ):
             mod_for_eager(torch.tensor(True), torch.tensor(5))
 

@@ -460,8 +460,6 @@ class NestedUserFunctionVariable(BaseUserFunctionVariable):
                 # InliningInstructionTranslator that traces `func`) handles
                 # the cell correctly - that is, the cell's contents are treated as if they
                 # are local variables, like in UserFunctionVariable's bind_args for freevars.
-                if not name in parent.symbolic_locals:
-                    breakpoint()
                 result[name] = parent.symbolic_locals[name]
             else:
                 closure_cells[name] = self.closure.items[idx]

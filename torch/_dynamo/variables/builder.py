@@ -1130,15 +1130,13 @@ def _dataclasses_fields_lambda(obj):
 
 
 def wrap_fx_proxy(tx, proxy, example_value=None, **options):
-    tensor_variable = wrap_fx_proxy_cls(
+    return wrap_fx_proxy_cls(
         target_cls=TensorVariable,
         tx=tx,
         proxy=proxy,
         example_value=example_value,
         **options,
     )
-    tensor_variable.proxy.node.meta["tensor_variable"] = tensor_variable
-    return tensor_variable
 
 
 # Note: Unfortunate split due to some gross classes existing that subclass TensorVariable
