@@ -29,13 +29,15 @@ class AOTInductorModelRunner:
             output_tensors.append(torch.empty_like(output))
 
         # The exact API is subject to change
-        exported = torch._export.export(
-            model,
-            example_inputs,
-            decomposition_table=select_decomp_table(),
-            _add_runtime_assertions=False,
-        )
-        so_path = torch._inductor.aot_compile(exported, example_inputs)
+        with torch.no_grad():
+            exported = torch._export.export(
+                model,
+                example_inputs,
+                decomposition_table=select_decomp_table(),
+                _add_runtime_assertions=False,
+            )
+            so_path = torch._inductor.aot_compile(exported, example_inputs)
+            print(so_path)
 
         # Use a utility function for easier testing
         source = """

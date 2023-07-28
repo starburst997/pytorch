@@ -56,7 +56,7 @@ def aot_compile(
     all_args = (*param_buffer_values, *flat_example_inputs)
 
     result = compile_fx_aot(
-        ep.graph_module,
+        ep,
         all_args,
         config_patches=options,
     )
