@@ -58,6 +58,7 @@ def exported_cond(op, *args):
                     raise RuntimeError(f"Unable to symbolically trace HigherOrderOperators {op}")
                 return t
 
+            args = (args[0], args[1], args[2], tuple(args[3]))
             with fake_tensor_mode:
                 new_args = pytree.tree_map(from_fun, args)
 
@@ -98,8 +99,7 @@ def exported_cond(op, *args):
 
 
 def cond_compiled(pred, true_fn, false_fn, args):
-    # return  cond(pred, true_fn, false_fn, args)
-    if torch. _dynamo.is_compiling():
+    if torch._dynamo.is_compiling():
         return cond(pred, true_fn, false_fn, args)
     else:
         return exported_cond(cond, pred, true_fn, false_fn, args)
