@@ -349,7 +349,7 @@ def constrain_range(a, *, min: Optional[int], max: Optional[int] = None):
         min = -sympy.oo
     if max is None:
         max = sympy.oo
-    if not isinstance(a, SymInt):
+    if not isinstance(a, (SymInt, SymFloat)):
         constrain_range_int(a, min=min, max=max)
         return
 
@@ -3094,6 +3094,7 @@ Target Guards:
             r = self._maybe_evaluate_static(result_expr)
             if r is not None:
                 return r
+            breakpoint()
             raise self._make_data_dependent_error(result_expr, expr)
         return result_expr
 

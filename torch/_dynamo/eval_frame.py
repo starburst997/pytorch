@@ -1044,7 +1044,8 @@ def export(
         matched_input_elements_positions = produce_matching(flat_args, graph_captured_input)
 
     # NB: This is mostly hitting the cache; Dynamo already converted these
-    example_fake_inputs = [fake_mode.from_tensor(t) for t in example_inputs]
+    from torch._subclasses.fake_tensor import FakeTensor
+    example_fake_inputs = [fake_mode.from_tensor(t)if isinstance(t, torch.Tensor) and not isinstance(t, FakeTensor) else t for t in example_inputs ]
     flat_results_traced, out_spec_traced = pytree.tree_flatten(result_traced)
 
     assert graph_captured_result is not None

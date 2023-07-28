@@ -311,7 +311,6 @@ class TestPasses(TestCase):
         mod = M()
         ep = export(mod, (torch.tensor(True), x, y))
 
-
         with self.assertRaisesRegex(RuntimeError, "is outside of inline constraint \\[2, 5\\]."):
             ep(torch.tensor(False), torch.tensor([6]), torch.tensor([6]))
 

@@ -33,15 +33,24 @@ def exported_cond(op, *args):
         .add(DispatchKey.Functionalize)
     with _ExcludeDispatchKeyGuard(exclude_keys):
         with torch.utils._python_dispatch._disable_current_modes():
+            from torch.fx.experimental.symbolic_shapes import ShapeEnv
+            fake_tensor_mode = torch._dynamo.utils.detect_fake_mode(args)
+            if fake_tensor_mode is None:
+                shape_env = ShapeEnv()
+                fake_tensor_mode = FakeTensorMode(
+                    allow_fallback_kernels=False,
+                    allow_non_fake_inputs=True,
+                    shape_env=shape_env)
+            else:
+                if fake_tensor_mode.shape_env is None:
+                    fake_tensor_mode.shape_env = ShapeEnv()
+
             def from_fun(t):
                 if isinstance(t, torch.Tensor):
-                    def to_hint(sym_int) -> int:
-                        if isinstance(sym_int, torch.SymInt):
-                            return sym_int.node._hint
-                        return sym_int
-                    size = pytree.tree_map(to_hint, t.size())
-                    stride = pytree.tree_map(to_hint, t.stride())
-                    return torch.empty_strided(size, stride, requires_grad=t.requires_grad)
+                    from torch._subclasses.fake_tensor import FakeTensor
+                    if isinstance(t, FakeTensor):
+                        return t
+                    return torch.empty_strided(t.size(), t.stride(), device=t.device, dtype=t.dtype, requires_grad=t.requires_grad)
                 # Need to specialize symbool for now. Won't affect traced graph.
                 elif isinstance(t, torch.SymBool):
                     return t.node._hint
@@ -49,19 +58,20 @@ def exported_cond(op, *args):
                     raise RuntimeError(f"Unable to symbolically trace HigherOrderOperators {op}")
                 return t
 
-            new_args = pytree.tree_map(from_fun, args)
+            with fake_tensor_mode:
+                new_args = pytree.tree_map(from_fun, args)
 
-            # we need to wrap true_fn/false_fn up otherwise the local scope
-            # will contain the original true_fn and false_fn's signature
-            def wrapper(new_args):
-                return cond(*new_args)
+                # we need to wrap true_fn/false_fn up otherwise the local scope
+                # will contain the original true_fn and false_fn's signature
+                def wrapper(new_args):
+                    return cond(*new_args)
 
-            # need to do it together otherwise will need to merge input ->
-            # duplicated effort with what we have already
-            gm, guards, example_inputs = torch._dynamo.export(wrapper, new_args, rewrite_sig=False)
-            example_inputs_ids = [id(inp) for inp in example_inputs]
-            id_to_name = {id(guard.obj_weakref()): guard.name for guard in guards if guard.obj_weakref is not None and id(guard.obj_weakref()) in example_inputs_ids}
-            example_names = [id_to_name[id(inp)] for inp in example_inputs]
+                # need to do it together otherwise will need to merge input ->
+                # duplicated effort with what we have already
+                gm, guards, example_inputs = torch._dynamo.export(wrapper, new_args, rewrite_sig=False, fake_mode=fake_tensor_mode)
+                example_inputs_ids = [id(inp) for inp in example_inputs]
+                id_to_name = {id(guard.obj_weakref()): guard.name for guard in guards if guard.obj_weakref is not None and id(guard.obj_weakref()) in example_inputs_ids}
+                example_names = [id_to_name[id(inp)] for inp in example_inputs]
 
     # fake the new_args with original args
     local_scope = {"L":{**locals(), "new_args":args}, "G":globals()}
@@ -84,13 +94,12 @@ def exported_cond(op, *args):
             else:
                 raise RuntimeError(f"Cannot bind to original argumentes for {arg_node}")
         return true_gm, false_gm, tuple(pos_args)
-
     return cond(args[0], *bind_branch_and_args(gm, pos_args))
 
 
 def cond_compiled(pred, true_fn, false_fn, args):
-    # return cond(pred, true_fn, false_fn, args)
-    if torch._dynamo.is_compiling():
+    # return  cond(pred, true_fn, false_fn, args)
+    if torch. _dynamo.is_compiling():
         return cond(pred, true_fn, false_fn, args)
     else:
         return exported_cond(cond, pred, true_fn, false_fn, args)
@@ -243,8 +252,11 @@ def cond_fake_tensor_mode(pred, true_fn, false_fn, operands):
         true_meta = _extract_tensor_metadata(true_out)
         false_meta = _extract_tensor_metadata(false_out)
         if true_meta != false_meta:
-            raise RuntimeError(
-                f"Unmatched tensor metadata from cond() branches.\ntrue branch: {true_meta}, false branch: {false_meta}")
+            raise CondOpArgsMismatchError(
+                f"Expected each tensor to have same metadata but got:"
+                f"\n  {true_fn.__name__} returns {true_meta}"
+                f"\n  {false_fn.__name__} returns {false_meta}"
+            )
     return true_outs
 
 

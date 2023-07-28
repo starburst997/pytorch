@@ -23,7 +23,7 @@ def constrain_as_value(symbol, min: Optional[int] = None, max: Optional[int] = N
     Add min/max constraint on the intermediate symbol at tracing time
     """
 
-    if not isinstance(symbol, SymInt):
+    if not isinstance(symbol, (SymInt, SymFloat)):
         constrain_range_int(symbol, min=min, max=max)
     else:
         sym_constrain_range(symbol, min, max)
