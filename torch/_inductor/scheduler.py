@@ -6,7 +6,7 @@ import logging
 import os
 import pprint
 import textwrap
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 import sympy
 
@@ -60,8 +60,9 @@ class BaseSchedulerNode:
     def __init__(self, scheduler: "Scheduler", node: ir.Buffer):
         self.scheduler: Scheduler = scheduler
         self.node: ir.Buffer = node
-        self.users: Optional[List[NodeUser]] = None
+        self.users: List[BaseSchedulerNode] = []
         self.inverse_users: List[BaseSchedulerNode] = []
+        self.meta: Dict[str, Any] = {"can_inplace": False}
         self.set_read_writes(node.get_read_writes())
         self.recursive_predecessors: Optional[Set[str]] = None
         self.min_order: Optional[int] = None
@@ -81,6 +82,7 @@ class BaseSchedulerNode:
             f"{name}.unmet_dependencies = {pformat(self.unmet_dependencies)}",
             f"{name}.met_dependencies = {pformat(self.read_writes.reads - self.unmet_dependencies)}",
             f"{name}.users = {self.users}",
+            f"{name}.meta = {self.meta}",
         ]
         try:
             lines += [
@@ -107,17 +109,21 @@ class BaseSchedulerNode:
     def add_mutation_dep(self, dep):
         self.set_read_writes(self.read_writes.with_read(dep))
 
-    def set_users(self, users: List["NodeUser"]):
+    def set_users(self, users: List["BaseSchedulerNode"], users_meta: Optional[List[Dict[str, Any]]] = None):
         # deduplicate
-        result: Dict[int, NodeUser] = {}
-        for use in users:
-            if id(use.node) in result:
-                result[id(use.node)] = NodeUser(
-                    use.node, result[id(use.node)].can_inplace and use.can_inplace
-                )
+        result: Dict[int, "BaseSchedulerNode"] = {}
+        for i, user in enumerate(users):
+            if users_meta is not None:
+                user_meta = users_meta[i]
+            if id(user) in result:
+                result[id(user)].meta["can_inplace"] = result[id(user)].meta["can_inplace"] and user_meta["can_inplace"]
             else:
-                result[id(use.node)] = use
+                result[id(user)] = user
         self.users = list(result.values())
+
+    @property
+    def args(self):
+        return self.inverse_users
 
     def set_last_usage(
         self, future_used_buffers: Set[str], mutation_real_name: Dict[str, str]
@@ -266,17 +272,17 @@ class BaseSchedulerNode:
                 input_node: BaseSchedulerNode = self.scheduler.name_to_node.get(
                     read.name
                 )
-                if input_node and V.graph.wrapper_code.can_reuse(input_node, self):
-                    remaining_uses = [
+                if input_node and V.graph.wrapper_code.can_reuse(input_node):
+                    remaining_users = [
                         x
                         for x in input_node.users
-                        if x.node.get_name()
+                        if x.get_name()
                         not in self.scheduler.available_buffer_names
                     ]
                     if (
-                        len(remaining_uses) == 1
-                        and remaining_uses[0].can_inplace
-                        and remaining_uses[0].node is self
+                        len(remaining_users) == 1
+                        and remaining_users[0].meta["can_inplace"]
+                        and remaining_users[0] is self
                         and not isinstance(
                             input_node.node.get_layout(),
                             (
@@ -313,8 +319,8 @@ class BaseSchedulerNode:
         V.graph.wrapper_code.codegen_allocation(self.node)
 
     def can_free(self):
-        for use in self.users:
-            if isinstance(use.node, OutputNode):
+        for user in self.users:
+            if isinstance(user, OutputNode):
                 return False
         return True
 
@@ -503,8 +509,9 @@ class FusedSchedulerNode(BaseSchedulerNode):
         self.snodes = snodes
         self.scheduler = scheduler
         self.node = None  # type: ignore[assignment]
-        self.users = None
+        self.users = []
         self.inverse_users = []
+        self.meta = {"can_inplace": False}
         self.group = max(snodes, key=lambda x: int(x.is_reduction())).group
         self.recursive_predecessors = set.union(
             *[x.recursive_predecessors for x in snodes]
@@ -598,7 +605,7 @@ class FusedSchedulerNode(BaseSchedulerNode):
     def add_mutation_dep(self, name):
         raise NotImplementedError
 
-    def set_users(self, users: List["NodeUser"]):
+    def set_users(self, users: List["BaseSchedulerNode"], users_meta: Optional[List[Dict[str, Any]]] = None):
         raise NotImplementedError
 
     def get_aliases(self):
@@ -933,7 +940,7 @@ class Scheduler:
         Create dependency edges between nodes, handling aliasing and
         mutation properly.
         """
-        name_to_users = collections.defaultdict(list)
+        name_to_nodeusers = collections.defaultdict(list)
 
         # handle aliasing by using python aliasing in name_to_users
         # if foo aliases bar then we will make name_to_users["foo"] point
@@ -941,18 +948,18 @@ class Scheduler:
         for node1 in self.nodes:
             node1_name = node1.get_name()
             for node2_name in node1.get_aliases():
-                if node1_name in name_to_users and node2_name in name_to_users:
+                if node1_name in name_to_nodeusers and node2_name in name_to_nodeusers:
                     # merge the two
-                    list1 = name_to_users[node1_name]
-                    list2 = name_to_users[node2_name]
+                    list1 = name_to_nodeusers[node1_name]
+                    list2 = name_to_nodeusers[node2_name]
                     combined = list1 + list2
-                    for key in name_to_users.keys():
-                        if name_to_users[key] is list1 or name_to_users[key] is list2:
-                            name_to_users[key] = combined
-                elif node1_name in name_to_users:
-                    name_to_users[node2_name] = name_to_users[node1_name]
+                    for key in name_to_nodeusers.keys():
+                        if name_to_nodeusers[key] is list1 or name_to_nodeusers[key] is list2:
+                            name_to_nodeusers[key] = combined
+                elif node1_name in name_to_nodeusers:
+                    name_to_nodeusers[node2_name] = name_to_nodeusers[node1_name]
                 else:
-                    name_to_users[node1_name] = name_to_users[node2_name]
+                    name_to_nodeusers[node1_name] = name_to_nodeusers[node2_name]
 
         def rename(n):
             if n in self.mutation_renames:
@@ -973,7 +980,7 @@ class Scheduler:
             return reachable_names
 
         def add_user(used_by_name, user_node, can_inplace=False):
-            name_to_users[rename(used_by_name)].append(NodeUser(user_node, can_inplace))
+            name_to_nodeusers[rename(used_by_name)].append(NodeUser(user_node, can_inplace))
 
         for node in self.nodes:
             # a node will mutate either 0 or 1 buffers
@@ -982,7 +989,7 @@ class Scheduler:
                 # this node must run after the prior writer
                 add_user(alt_name, node)
                 node.add_mutation_dep(StarDep(alt_name))
-                for other_node in name_to_users[alt_name]:
+                for other_node in name_to_nodeusers[alt_name]:
                     # this node must run after all prior readers
                     other_name = rename(other_node.get_name())
                     known_dep_node_names = dep_closure(node.get_name())
@@ -1025,12 +1032,17 @@ class Scheduler:
 
         # copy users information onto the nodes
         for node in self.nodes:
-            node.set_users(name_to_users[node.get_name()])
+            users = []
+            users_meta = []
+            for nodeuser in name_to_nodeusers[node.get_name()]:
+                users.append(nodeuser.node)
+                users_meta.append({"can_inplace": nodeuser.can_inplace})
+            node.set_users(users, users_meta=users_meta)
 
         # populate inverse_users
         for node in self.nodes:
             for user in node.users:
-                user.node.inverse_users.append(node)
+                user.inverse_users.append(node)
 
     def dead_node_elimination(self):
         """
