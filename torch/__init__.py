@@ -16,6 +16,8 @@ import platform
 import textwrap
 import ctypes
 import inspect
+if sys.version_info < (3,):
+    raise Exception("Python 2 has reached end-of-life and is no longer supported by PyTorch.")
 
 # multipy/deploy is setting this import before importing torch, this is the most
 # reliable way we have to detect if we're running within deploy.
@@ -1586,9 +1588,17 @@ class _TorchCompileWrapper:
         return self.compiler_fn(model_, inputs_, **self.kwargs)
 
 
+################################################################################
+# Exposing torch.export() and related support APIs
+################################################################################
+from torch._export import utils as export_utils
+from torch._export.export import export
+__all__.extend("export", "export_utils")
+
+
 def compile(model: Optional[Callable] = None, *,
             fullgraph: builtins.bool = False,
-            dynamic: Optional[builtins.bool] = None,
+            dynamic: builtins.bool = False,
             backend: Union[str, Callable] = "inductor",
             mode: Union[str, None] = None,
             options: Optional[Dict[str, Union[str, builtins.int, builtins.bool]]] = None,
@@ -1610,13 +1620,12 @@ def compile(model: Optional[Callable] = None, *,
     Args:
        model (Callable): Module/function to optimize
        fullgraph (bool): Whether it is ok to break model into several subgraphs
-       dynamic (bool or None): Use dynamic shape tracing.  When this is True, we will up-front attempt
+       dynamic (bool): Use dynamic shape tracing.  When this is True, we will up-front attempt
         to generate a kernel that is as dynamic as possible to avoid recompilations when
         sizes change.  This may not always work as some operations/optimizations will
         force specialization; use TORCH_LOGS=dynamic to debug overspecialization.
-        When this is False, we will NEVER generate dynamic kernels, we will always specialize.
-        By default (None), we automatically detect if dynamism has occurred and compile a more
-        dynamic kernel upon recompile.
+        In particular, if you use "reduce-overhead", this will force sizes to be static
+        even with dynamic=True.
        backend (str or Callable): backend to be used
         - "inductor" is the default backend, which is a good balance between performance and overhead
         - Non experimental in-tree backends can be seen with `torch._dynamo.list_backends()`
@@ -1738,7 +1747,7 @@ torch.backends.mps._init()
 if not _running_with_deploy():
     from torch import compiler as compiler
 
-    class _TritonLibrary:
+    class _TritonLibrary(object):
         lib = torch.library.Library("triton", "DEF")
         ops_table: Dict[Tuple[str, str], Callable] = {}
 

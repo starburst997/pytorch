@@ -11,6 +11,24 @@ from torch.utils._pytree import (
     UnflattenFunc,
 )
 
+from torch._export.exported_program import ExportedProgram, ExportGraphSignature
+from torch._export.serde.serialize import serialize, deserialize
+from torch._export.constraints import constrain_as_size, constrain_as_value, dynamic_dim
+from torch._export.pass_base import ExportPassBase
+
+
+__all__ = [
+    "dynamic_dim",
+    "ExportedProgram",
+    "ExportGraphSignature",
+    "serialize",
+    "deserialize",
+    "constrain_as_size",
+    "constrain_as_value",
+    "ExportPassBase",
+    "register_dataclass_as_pytree_node",
+]
+
 
 def register_dataclass_as_pytree_node(
     typ: Any,
@@ -52,3 +70,4 @@ def register_dataclass_as_pytree_node(
         None,
         None,
     )
+

@@ -3,7 +3,6 @@
 import unittest
 
 import torch._dynamo as torchdynamo
-from torch._export import export
 from torch._export.db.case import ExportCase, normalize_inputs, SupportLevel
 from torch._export.db.examples import (
     filter_examples_by_support_level,
@@ -29,7 +28,7 @@ class ExampleTests(TestCase):
         model = case.model
 
         inputs = normalize_inputs(case.example_inputs)
-        exported_program = export(
+        exported_program = torch.export(
             model,
             inputs.args,
             inputs.kwargs,
@@ -59,7 +58,7 @@ class ExampleTests(TestCase):
         # pyre-ignore
         with self.assertRaises(torchdynamo.exc.Unsupported):
             inputs = normalize_inputs(case.example_inputs)
-            exported_model = export(
+            exported_model = torch.export(
                 model,
                 inputs.args,
                 inputs.kwargs,
@@ -82,7 +81,7 @@ class ExampleTests(TestCase):
     ) -> None:
         # pyre-ignore
         inputs = normalize_inputs(rewrite_case.example_inputs)
-        exported_model = export(
+        exported_model = torch.export(
             rewrite_case.model,
             inputs.args,
             inputs.kwargs,
