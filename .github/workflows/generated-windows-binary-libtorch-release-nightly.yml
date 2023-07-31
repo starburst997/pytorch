@@ -3069,7 +3069,6 @@ jobs:
       DESIRED_CUDA: cu121
       GPU_ARCH_VERSION: 12.1
       BUILD_SHARED_LIBS : false
-      BUILD_TEST : false
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       LIBTORCH_CONFIG: release
@@ -3187,7 +3186,6 @@ jobs:
       DESIRED_CUDA: cu121
       GPU_ARCH_VERSION: 12.1
       BUILD_SHARED_LIBS : false
-      BUILD_TEST : false
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       LIBTORCH_CONFIG: release
@@ -3255,12 +3253,12 @@ jobs:
           # Remove any artifacts from the previous checkouts
           git clean -fxd
         working-directory: pytorch
-      - name: Checkout mantaionut/builder
+      - name: Checkout pytorch/builder
         uses: malfet/checkout@silent-checkout
         with:
-          ref: windows_static_lib_test
+          ref: main
           submodules: recursive
-          repository: mantaionut/builder
+          repository: pytorch/builder
           path: builder
           quiet-checkout: true
       - name: Clean pytorch/builder checkout
@@ -3301,7 +3299,6 @@ jobs:
       DESIRED_CUDA: cu121
       GPU_ARCH_VERSION: 12.1
       BUILD_SHARED_LIBS : false
-      BUILD_TEST : false
       GPU_ARCH_TYPE: cuda
       LIBTORCH_CONFIG: release
       LIBTORCH_VARIANT: static-without-deps
