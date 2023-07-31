@@ -7,7 +7,22 @@
 #
 #       For reference:
 #           https://docs.docker.com/develop/develop-images/build_enhancements/
-ARG BASE_IMAGE=ubuntu:18.04
+#
+# Mods by JD:
+#   Needed a PyTorch image with specific python version / CUDA
+#   So I simply filled ARGS with the value I needed and then built the image locally
+# 
+# TODO: Might not need `devel` image... Will need some testing to see how much I can squeeze it
+#
+# Basically:
+#   CUDA: 11.8
+#   cudnn: 8
+#   PyTorch: 2.0.1
+#   Python: 3.8
+#
+# `DOCKER_BUILDKIT=1 docker build -t ghcr.io/starburst997/remarkebly-ai-pytorch:latest . 
+#
+ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 ARG PYTHON_VERSION=3.8
 
 FROM ${BASE_IMAGE} as dev-base
@@ -28,7 +43,7 @@ ENV PATH /opt/conda/bin:$PATH
 FROM dev-base as conda
 ARG PYTHON_VERSION=3.8
 # Automatically set by buildx
-ARG TARGETPLATFORM
+ARG TARGETPLATFORM=linux/amd64
 # translating Docker's TARGETPLATFORM into miniconda arches
 RUN case ${TARGETPLATFORM} in \
          "linux/arm64")  MINICONDA_ARCH=aarch64  ;; \
@@ -60,13 +75,13 @@ RUN --mount=type=cache,target=/opt/ccache \
 
 FROM conda as conda-installs
 ARG PYTHON_VERSION=3.8
-ARG CUDA_VERSION=11.7
+ARG CUDA_VERSION=11.8
 ARG CUDA_CHANNEL=nvidia
-ARG INSTALL_CHANNEL=pytorch-nightly
+ARG INSTALL_CHANNEL=pytorch
 # Automatically set by buildx
 RUN /opt/conda/bin/conda update -y conda
 RUN /opt/conda/bin/conda install -c "${INSTALL_CHANNEL}" -y python=${PYTHON_VERSION}
-ARG TARGETPLATFORM
+ARG TARGETPLATFORM=linux/amd64
 
 # On arm64 we can only install wheel packages.
 RUN case ${TARGETPLATFORM} in \
@@ -77,10 +92,10 @@ RUN case ${TARGETPLATFORM} in \
 RUN /opt/conda/bin/pip install torchelastic
 
 FROM ${BASE_IMAGE} as official
-ARG PYTORCH_VERSION
-ARG TRITON_VERSION
-ARG TARGETPLATFORM
-ARG CUDA_VERSION
+ARG PYTORCH_VERSION=2.0.1
+ARG TRITON_VERSION=2.0.0+b8b470bc597c1c5bd03682c09fe3e6b7c53787fd
+ARG TARGETPLATFORM=linux/amd64
+ARG CUDA_VERSION=11.8.0
 LABEL com.nvidia.volumes.needed="nvidia_driver"
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \

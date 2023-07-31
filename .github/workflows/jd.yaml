@@ -1,0 +1,32 @@
+on:
+  push:
+    branches:
+      - jd
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Build container image
+      run: DOCKER_BUILDKIT=1 docker build -t ghcr.io/starburst997/pytorch:latest .
+
+    - name: Log in docker
+      run: echo ${{ secrets.PAT_PKG_PUBLIC }} | docker login ghcr.io -u starburst997 --password-stdin
+
+    - name: Push image to Container Registry
+      run: docker push ghcr.io/starburst997/pytorch:latest
+
+    - name: Only keep latest version in registry
+      uses: actions/delete-package-versions@v4
+      with: 
+        package-name: 'pytorch'
+        package-type: 'container'
+        min-versions-to-keep: 0
+        delete-only-untagged-versions: 'true'
+        token: ${{ secrets.PAT_PKG_PUBLIC }}
