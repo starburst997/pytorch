@@ -4821,6 +4821,7 @@ class TestAgainstScipy(DistributionsTestCase):
                 continue
             self.assertEqual(cdf, scipy_dist.cdf(samples), msg=pytorch_dist)
 
+    @skipIfTorchDynamo("Tries to trace through SciPy and fails")
     def test_icdf(self):
         for pytorch_dist, scipy_dist in self.distribution_pairs:
             samples = torch.rand((5,) + pytorch_dist.batch_shape)
