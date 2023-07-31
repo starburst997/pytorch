@@ -3068,13 +3068,14 @@ jobs:
       #       favor of GPU_ARCH_VERSION
       DESIRED_CUDA: cu121
       GPU_ARCH_VERSION: 12.1
-      BUILD_SHARED_LIBS : false
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       LIBTORCH_CONFIG: release
       LIBTORCH_VARIANT: static-without-deps
       # This is a dummy value for libtorch to work correctly with our batch scripts
       # without this value pip does not get installed for some reason
+      BUILD_SHARED_LIBS : false
+      BUILD_TEST : false
       DESIRED_PYTHON: "3.8"
     steps:
       - name: Display EC2 information
@@ -3185,13 +3186,14 @@ jobs:
       #       favor of GPU_ARCH_VERSION
       DESIRED_CUDA: cu121
       GPU_ARCH_VERSION: 12.1
-      BUILD_SHARED_LIBS : false
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       LIBTORCH_CONFIG: release
       LIBTORCH_VARIANT: static-without-deps
       # This is a dummy value for libtorch to work correctly with our batch scripts
       # without this value pip does not get installed for some reason
+      BUILD_SHARED_LIBS : false
+      BUILD_TEST : false
       DESIRED_PYTHON: "3.8"
     steps:
       - name: Display EC2 information
@@ -3298,7 +3300,6 @@ jobs:
       #       favor of GPU_ARCH_VERSION
       DESIRED_CUDA: cu121
       GPU_ARCH_VERSION: 12.1
-      BUILD_SHARED_LIBS : false
       GPU_ARCH_TYPE: cuda
       LIBTORCH_CONFIG: release
       LIBTORCH_VARIANT: static-without-deps
