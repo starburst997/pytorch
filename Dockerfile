@@ -20,7 +20,7 @@
 #   PyTorch: 2.0.1
 #   Python: 3.8
 #
-# `DOCKER_BUILDKIT=1 docker build -t ghcr.io/starburst997/remarkebly-ai-pytorch:latest . 
+# `DOCKER_BUILDKIT=1 docker build -t ghcr.io/starburst997/pytorch:latest . 
 #
 ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 ARG PYTHON_VERSION=3.8
