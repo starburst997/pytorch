@@ -19,6 +19,12 @@
 {%- if config["gpu_arch_version"] %}
       GPU_ARCH_VERSION: !{{ config["gpu_arch_version"] }}
 {%- endif %}
+{%- if "BUILD_SHARED_LIBS" in config %}
+      BUILD_SHARED_LIBS : !{{ config["BUILD_SHARED_LIBS"] }}
+{%- endif %}
+{%- if "BUILD_TEST" in config %}
+      BUILD_TEST : !{{ config["BUILD_TEST"] }}
+{%- endif %}
       GPU_ARCH_TYPE: !{{ config["gpu_arch_type"] }}
 {%- if include_skip_tests %}
       SKIP_ALL_TESTS: 1

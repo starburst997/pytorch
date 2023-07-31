@@ -193,6 +193,7 @@ def generate_libtorch_matrix(
                         gpu_arch_type, gpu_arch_version
                     ),
                     "BUILD_SHARED_LIBS": "false",
+                    "BUILD_TEST": "false",
                     "libtorch_variant": "static-without-deps",
                     "libtorch_config": abi_version if os == "windows" else "",
                     "devtoolset": abi_version if os != "windows" else "",
