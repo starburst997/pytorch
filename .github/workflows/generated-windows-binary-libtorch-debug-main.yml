@@ -43,6 +43,7 @@ jobs:
       # This is a dummy value for libtorch to work correctly with our batch scripts
       # without this value pip does not get installed for some reason
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -158,6 +159,7 @@ jobs:
       # This is a dummy value for libtorch to work correctly with our batch scripts
       # without this value pip does not get installed for some reason
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash

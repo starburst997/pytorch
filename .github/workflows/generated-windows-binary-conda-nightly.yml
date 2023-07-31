@@ -46,6 +46,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -157,6 +158,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -285,6 +287,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -397,6 +400,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -526,6 +530,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -638,6 +643,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.8"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -766,6 +772,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.9"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -877,6 +884,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.9"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1005,6 +1013,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.9"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1117,6 +1126,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.9"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1246,6 +1256,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.9"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1358,6 +1369,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.9"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1486,6 +1498,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.10"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1597,6 +1610,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.10"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1725,6 +1739,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.10"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1837,6 +1852,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.10"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -1966,6 +1982,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.10"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2078,6 +2095,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.10"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2206,6 +2224,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.11"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2317,6 +2336,7 @@ jobs:
       GPU_ARCH_TYPE: cpu
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.11"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2445,6 +2465,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.11"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2557,6 +2578,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.11"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2686,6 +2708,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.11"
+      
     steps:
       - name: Display EC2 information
         shell: bash
@@ -2798,6 +2821,7 @@ jobs:
       GPU_ARCH_TYPE: cuda
       SKIP_ALL_TESTS: 1
       DESIRED_PYTHON: "3.11"
+      
     steps:
       - name: Display EC2 information
         shell: bash

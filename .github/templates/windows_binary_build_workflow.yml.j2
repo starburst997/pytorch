@@ -59,6 +59,7 @@ jobs:
     runs-on: windows.4xlarge.nonephemeral
     timeout-minutes: !{{ common.timeout_minutes }}
     !{{ upload.binary_env(config, True) }}
+      {% if "BUILD_SHARED_LIBS" in config%}BUILD_SHARED_LIBS : !{{config["BUILD_SHARED_LIBS"]}} {% else %}{% endif %}
     steps:
       !{{ common.setup_ec2_windows() }}
       !{{ set_runner_specific_vars() }}
@@ -94,6 +95,7 @@ jobs:
 {%- endif %}
     timeout-minutes: !{{ common.timeout_minutes }}
     !{{ upload.binary_env(config, True) }}
+      {% if "BUILD_SHARED_LIBS" in config%}BUILD_SHARED_LIBS : !{{config["BUILD_SHARED_LIBS"]}} {% else %}{% endif %}
     steps:
       !{{ common.setup_ec2_windows() }}
       !{{ set_runner_specific_vars() }}
